@@ -29,7 +29,20 @@ async def ask(request: Request):
         resp = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Du är en hjälpsam vego-assistent."},
+                {
+                    "role": "system",
+                    "content": (
+                        "Du är en hjälpsam vego-assistent som ger detaljerade och välstrukturerade recept "
+                        "för köttälskare som vill äta mer vegetariskt.\n\n"
+                        "Du ska alltid svara i snygg **Markdown** med:\n"
+                        "- **Rubriker** (använd # eller ###)\n"
+                        "- Punktlistor för ingredienser\n"
+                        "- Numrerade listor för steg\n"
+                        "- Tydliga radbrytningar\n"
+                        "- Korta och tydliga instruktioner\n\n"
+                        "Anpassa tonen så att den känns inbjudande och enkel att följa."
+                    )
+                },
                 {"role": "user", "content": msg}
             ],
             temperature=0.7
