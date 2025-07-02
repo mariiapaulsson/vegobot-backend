@@ -20,36 +20,39 @@ async def root():
 @app.post("/ask")
 async def ask(request: Request):
     data = await request.json()
-    messages = data.get("messages")
-    if not messages or not isinstance(messages, list):
-        return {"response": "Inga meddelanden mottagna."}
+    history = data.get("history", [])
+    msg = data.get("message")
+    
+    if not msg:
+        return {"response": "Inget meddelande mottaget."}
 
-    # Lägg på din systemprompt först
-    system_message = {
-        "role": "system",
-        "content": (
-            "Du är en hjälpsam vego-assistent som ger detaljerade och välstrukturerade recept "
-            "för köttälskare som vill äta mer vegetariskt.\n\n"
-            "Du ska alltid svara i snygg **Markdown** med:\n"
-            "- **Rubriker** (använd # eller ###)\n"
-            "- Punktlistor för ingredienser\n"
-            "- Numrerade listor för steg\n"
-            "- Tydliga radbrytningar\n"
-            "- Korta och tydliga instruktioner\n\n"
-            "Anpassa tonen så att den känns inbjudande och enkel att följa.\n\n"
-            "Fortsätt alltid hålla sammanhanget i konversationen så att användaren kan ställa följdfrågor "
-            "utan att behöva repetera allt."
-        )
-    }
+    # Gör om history till korrekt format
+    formatted_history = []
+    for item in history:
+        role = "user" if item["role"] == "user" else "assistant"
+        formatted_history.append({"role": role, "content": item["text"]})
 
-    # Skapa hela prompten till GPT
-    all_messages = [system_message] + messages
+    # Lägg till senaste frågan
+    formatted_history.append({"role": "user", "content": msg})
+
+    # Lägg till systemprompt först
+    system_prompt = (
+        "Du är en hjälpsam vego-assistent som ger detaljerade och välstrukturerade recept "
+        "för köttälskare som vill äta mer vegetariskt.\n\n"
+        "Svara alltid i **Markdown** med:\n"
+        "- **Rubriker**\n"
+        "- Punktlistor för ingredienser\n"
+        "- Numrerade steg\n"
+        "- Korta och tydliga instruktioner.\n"
+        "Följ samtalet så att du kan svara på följdfrågor om samma recept."
+    )
+    formatted_history = [{"role": "system", "content": system_prompt}] + formatted_history
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     try:
         resp = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=all_messages,
+            messages=formatted_history,
             temperature=0.7
         )
         return {"response": resp.choices[0].message.content.strip()}
