@@ -20,39 +20,30 @@ async def root():
 @app.post("/ask")
 async def ask(request: Request):
     data = await request.json()
-    history = data.get("history", [])
-    msg = data.get("message")
-    
-    if not msg:
-        return {"response": "Inget meddelande mottaget."}
+    conversation = data.get("conversation", [])
 
-    # Gör om history till korrekt format
-    formatted_history = []
-    for item in history:
-        role = "user" if item["role"] == "user" else "assistant"
-        formatted_history.append({"role": role, "content": item["text"]})
-
-    # Lägg till senaste frågan
-    formatted_history.append({"role": "user", "content": msg})
-
-    # Lägg till systemprompt först
-    system_prompt = (
-        "Du är en hjälpsam vego-assistent som ger detaljerade och välstrukturerade recept "
-        "för köttälskare som vill äta mer vegetariskt.\n\n"
-        "Svara alltid i **Markdown** med:\n"
-        "- **Rubriker**\n"
-        "- Punktlistor för ingredienser\n"
-        "- Numrerade steg\n"
-        "- Korta och tydliga instruktioner.\n"
-        "Följ samtalet så att du kan svara på följdfrågor om samma recept."
-    )
-    formatted_history = [{"role": "system", "content": system_prompt}] + formatted_history
+    if not conversation or not isinstance(conversation, list):
+        return {"response": "Ingen giltig konversation skickades."}
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     try:
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "Du är en hjälpsam vego-assistent som ger detaljerade, välstrukturerade vegetariska recept "
+                    "för köttälskare som vill äta mer grönt. "
+                    "Svara alltid i snygg **Markdown** med rubriker, punktlistor för ingredienser, numrerade steg och radbrytningar. "
+                    "Använd gärna passande emojis för att göra svaret mer levande (🥦 🍅 🌱).\n\n"
+                    "Om användaren ber om att ändra något i ett tidigare recept eller fråga (t.ex. 'utan tomat'), "
+                    "ge korta, konkreta förslag på hur ingredienser kan bytas ut eller justeras utan att skriva hela receptet igen."
+                )
+            }
+        ] + conversation
+
         resp = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=formatted_history,
+            messages=messages,
             temperature=0.7
         )
         return {"response": resp.choices[0].message.content.strip()}
