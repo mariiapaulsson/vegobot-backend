@@ -20,30 +20,34 @@ async def root():
 @app.post("/ask")
 async def ask(request: Request):
     data = await request.json()
-    conversation = data.get("conversation", [])
-
-    if not conversation or not isinstance(conversation, list):
+    messages = data.get("messages")
+    if not messages or not isinstance(messages, list):
         return {"response": "Ingen giltig konversation skickades."}
+
+    # Mappa frontend roller till OpenAI-roller
+    mapped_messages = []
+    for msg in messages:
+        role = "user" if msg["role"] == "user" else "assistant"
+        mapped_messages.append({"role": role, "content": msg["text"]})
+
+    # Lägg till en system-prompt först
+    system_prompt = {
+        "role": "system",
+        "content": (
+            "Du är en hjälpsam vego-assistent som ger detaljerade och välstrukturerade "
+            "receptförslag till köttälskare som vill äta mer vegetariskt. Svara alltid i snygg Markdown. "
+            "Om användaren ställer en följdfråga (t.ex. 'kan jag byta ut tomat?') ska du föreslå alternativ "
+            "som passar i just det specifika receptet istället för att börja ett nytt recept från början."
+        )
+    }
+
+    full_messages = [system_prompt] + mapped_messages
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     try:
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "Du är en hjälpsam vego-assistent som ger detaljerade, välstrukturerade vegetariska recept "
-                    "för köttälskare som vill äta mer grönt. "
-                    "Svara alltid i snygg **Markdown** med rubriker, punktlistor för ingredienser, numrerade steg och radbrytningar. "
-                    "Använd gärna passande emojis för att göra svaret mer levande (🥦 🍅 🌱).\n\n"
-                    "Om användaren ber om att ändra något i ett tidigare recept eller fråga (t.ex. 'utan tomat'), "
-                    "ge korta, konkreta förslag på hur ingredienser kan bytas ut eller justeras utan att skriva hela receptet igen."
-                )
-            }
-        ] + conversation
-
         resp = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=messages,
+            messages=full_messages,
             temperature=0.7
         )
         return {"response": resp.choices[0].message.content.strip()}
