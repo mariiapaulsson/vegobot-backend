@@ -20,31 +20,36 @@ async def root():
 @app.post("/ask")
 async def ask(request: Request):
     data = await request.json()
-    msg = data.get("message")
-    if not msg:
-        return {"response": "Inget meddelande mottaget."}
+    messages = data.get("messages")
+    if not messages or not isinstance(messages, list):
+        return {"response": "Inga meddelanden mottagna."}
+
+    # Lägg på din systemprompt först
+    system_message = {
+        "role": "system",
+        "content": (
+            "Du är en hjälpsam vego-assistent som ger detaljerade och välstrukturerade recept "
+            "för köttälskare som vill äta mer vegetariskt.\n\n"
+            "Du ska alltid svara i snygg **Markdown** med:\n"
+            "- **Rubriker** (använd # eller ###)\n"
+            "- Punktlistor för ingredienser\n"
+            "- Numrerade listor för steg\n"
+            "- Tydliga radbrytningar\n"
+            "- Korta och tydliga instruktioner\n\n"
+            "Anpassa tonen så att den känns inbjudande och enkel att följa.\n\n"
+            "Fortsätt alltid hålla sammanhanget i konversationen så att användaren kan ställa följdfrågor "
+            "utan att behöva repetera allt."
+        )
+    }
+
+    # Skapa hela prompten till GPT
+    all_messages = [system_message] + messages
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     try:
         resp = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Du är en hjälpsam vego-assistent som ger detaljerade och välstrukturerade recept "
-                        "för köttälskare som vill äta mer vegetariskt.\n\n"
-                        "Du ska alltid svara i snygg **Markdown** med:\n"
-                        "- **Rubriker** (använd # eller ###)\n"
-                        "- Punktlistor för ingredienser\n"
-                        "- Numrerade listor för steg\n"
-                        "- Tydliga radbrytningar\n"
-                        "- Korta och tydliga instruktioner\n\n"
-                        "Anpassa tonen så att den känns inbjudande och enkel att följa."
-                    )
-                },
-                {"role": "user", "content": msg}
-            ],
+            messages=all_messages,
             temperature=0.7
         )
         return {"response": resp.choices[0].message.content.strip()}
