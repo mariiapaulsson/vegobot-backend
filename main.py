@@ -24,20 +24,28 @@ async def ask(request: Request):
     if not messages or not isinstance(messages, list):
         return {"response": "Ingen giltig konversation skickades."}
 
-    # Mappa frontend roller till OpenAI-roller
+    # Mappa frontendroller till OpenAI-roller
     mapped_messages = []
     for msg in messages:
         role = "user" if msg["role"] == "user" else "assistant"
         mapped_messages.append({"role": role, "content": msg["text"]})
 
-    # Lägg till en system-prompt först
+    # Lägg till system-prompt först
     system_prompt = {
         "role": "system",
         "content": (
-            "Du är en hjälpsam vego-assistent som ger detaljerade och välstrukturerade "
-            "receptförslag till köttälskare som vill äta mer vegetariskt. Svara alltid i snygg Markdown. "
-            "Om användaren ställer en följdfråga (t.ex. 'kan jag byta ut tomat?') ska du föreslå alternativ "
-            "som passar i just det specifika receptet istället för att börja ett nytt recept från början."
+            "Du är en hjälpsam vego-assistent som ger detaljerade och välstrukturerade vegetariska recept "
+            "och mattips, formaterat i snygg **Markdown** med rubriker, punktlistor och numrerade steg.\n\n"
+            "✅ Om användaren ber om köttrecept eller ingredienser med kött: Svara artigt att det är utanför ditt område men föreslå en vegetarisk variant istället.\n"
+            "Exempel: 'Det är lite utanför mitt område, men jag kan föreslå en god vegetarisk variant istället!'\n\n"
+            "✅ Om användaren frågar om något helt orelaterat till mat eller recept: Förklara artigt att du är en vego-assistent och håll konversationen på ämnet.\n\n"
+            "✅ Vid följdfrågor som 'kan jag byta ut tomat?' ska du föreslå passande alternativ utan att börja om receptet.\n\n"
+            "✅ Använd **snygg Markdown**:\n"
+            "- Rubriker (#, ##, etc.)\n"
+            "- Punktlistor för ingredienser\n"
+            "- Numrerade steg för instruktioner\n"
+            "- Emojis sparsamt men passande 🍆🥦🌱\n\n"
+            "✅ Var alltid vänlig och inbjudande i tonen."
         )
     }
 
